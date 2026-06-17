@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Universo — Para ti</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    #wrap {
+      position: fixed;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+
+    #wrap.active { opacity: 1; }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #bg     { z-index: 0; }
+    #galaxy { z-index: 1; cursor: grab; }
+    #galaxy.dragging { cursor: grabbing; }
+    #bloom  { z-index: 2; pointer-events: none; mix-blend-mode: screen; opacity: 0.72; }
+    #grain  { z-index: 3; pointer-events: none; opacity: 0.055; mix-blend-mode: overlay; }
+    #vignette { z-index: 4; pointer-events: none; }
+
+    .intro {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(ellipse at 50% 45%, rgba(40, 15, 80, 0.45) 0%, transparent 55%),
+        #000;
+      transition: opacity 1.5s ease, visibility 1.5s ease;
+    }
+
+    .intro.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .intro-content { text-align: center; animation: fadeUp 1.2s ease forwards; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .intro-subtitle {
+      color: rgba(180, 160, 220, 0.75);
+      font-size: clamp(0.8rem, 2vw, 1rem);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .intro-title {
+      color: #fff;
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      font-weight: 300;
+      text-shadow: 0 0 30px rgba(255,255,255,0.5), 0 0 80px rgba(125,95,255,0.6);
+      margin-bottom: 2.5rem;
+    }
+
+    .enter-btn {
+      padding: 1rem 2.8rem;
+      font-family: inherit;
+      font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #fff;
+      background: rgba(125, 95, 255, 0.12);
+      border: 1px solid rgba(200, 180, 255, 0.35);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform 0.25s, box-shadow 0.35s, background 0.35s;
+    }
+
+    .enter-btn:hover {
+      background: rgba(125, 95, 255, 0.25);
+      box-shadow: 0 0 40px rgba(125, 95, 255, 0.35);
+      transform: scale(1.05);
+    }
+
+    .message {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      color: #fff;
+      font-size: clamp(2rem, 6vw, 4rem);
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      text-shadow: 0 0 20px rgba(255,255,255,0.7), 0 0 60px rgba(125,95,255,0.9);
+      transition: opacity 2.5s ease 0.8s;
+    }
+
+    .message.visible { opacity: 1; }
+    .message.fade-out { opacity: 0; transition: opacity 3.5s ease; }
+
+    /* ── Controles y HUD ── */
+    .hud {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 1.5s ease 1s;
+    }
+
+    .hud.visible { opacity: 1; }
+
+    .hud-hint {
+      color: rgba(200, 190, 230, 0.75);
+      font-size: clamp(0.75rem, 2vw, 0.9rem);
+      letter-spacing: 0.08em;
+      text-align: center;
+      text-shadow: 0 0 10px rgba(0,0,0,0.8);
+    }
+
+    .hud-progress {
+      padding: 0.4rem 1.2rem;
+      border-radius: 999px;
+      background: rgba(10, 5, 30, 0.6);
+      border: 1px solid rgba(180, 150, 255, 0.25);
+      color: rgba(220, 210, 255, 0.9);
+      font-size: clamp(0.75rem, 2vw, 0.85rem);
+      letter-spacing: 0.12em;
+    }
+
+    /* ── Modal de estrella ── */
+    .star-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 8, 0.65);
+      backdrop-filter: blur(6px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+      padding: 1.5rem;
+    }
+
+    .star-modal.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .star-card {
+      position: relative;
+      max-width: 420px;
+      width: 100%;
+      padding: 2.2rem 2rem 1.8rem;
+      text-align: center;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(125, 95, 255, 0.2) 0%, transparent 60%),
+        rgba(12, 8, 35, 0.92);
+      border: 1px solid rgba(180, 150, 255, 0.3);
+      border-radius: 20px;
+      box-shadow:
+        0 0 60px rgba(125, 95, 255, 0.25),
+        0 20px 60px rgba(0, 0, 0, 0.5);
+      transform: scale(0.9) translateY(20px);
+      transition: transform 0.4s ease;
+    }
+
+    .star-modal.open .star-card {
+      transform: scale(1) translateY(0);
+    }
+
+    .star-card-icon {
+      font-size: 2rem;
+      margin-bottom: 0.8rem;
+      filter: drop-shadow(0 0 12px rgba(255, 220, 150, 0.8));
+    }
+
+    .star-card-name {
+      color: rgba(180, 160, 255, 0.85);
+      font-size: 0.85rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .star-card-text {
+      color: #fff;
+      font-size: clamp(1.1rem, 3.5vw, 1.45rem);
+      line-height: 1.6;
+      text-shadow: 0 0 20px rgba(125, 95, 255, 0.4);
+      margin-bottom: 1.8rem;
+    }
+
+    .star-card-close {
+      padding: 0.65rem 2rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #fff;
+      background: rgba(125, 95, 255, 0.2);
+      border: 1px solid rgba(200, 180, 255, 0.35);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    .star-card-close:hover {
+      background: rgba(125, 95, 255, 0.35);
+      box-shadow: 0 0 20px rgba(125, 95, 255, 0.3);
+    }
+
+    .star-card-counter {
+      margin-top: 1rem;
+      color: rgba(180, 170, 220, 0.6);
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="intro" id="intro">
+    <div class="intro-content">
+      <p class="intro-subtitle">Un regalo del cosmos</p>
+      <h1 class="intro-title">Para ti ✨</h1>
+      <button class="enter-btn" id="enterBtn">Entrar al universo</button>
+    </div>
+  </div>
+
+  <div id="wrap">
+    <canvas id="bg"></canvas>
+    <canvas id="galaxy"></canvas>
+    <canvas id="bloom"></canvas>
+    <canvas id="grain"></canvas>
+    <canvas id="vignette"></canvas>
+  </div>
+
+  <div class="message" id="message">Para ti ✨</div>
+
+  <div class="hud" id="hud">
+    <p class="hud-hint">Arrastra para explorar · Rueda del ratón para acercar · Haz clic en las estrellas doradas ✦</p>
+    <div class="hud-progress" id="progress">Estrellas descubiertas: 0 / 10</div>
+  </div>
+
+  <div class="star-modal" id="starModal">
+    <div class="star-card">
+      <div class="star-card-icon">✦</div>
+      <p class="star-card-name" id="starName"></p>
+      <p class="star-card-text" id="starText"></p>
+      <button class="star-card-close" id="starClose">Seguir explorando</button>
+      <p class="star-card-counter" id="starCounter"></p>
+    </div>
+  </div>
+
+  <script>
+    const wrap     = document.getElementById("wrap");
+    const bgC      = document.getElementById("bg");
+    const galC     = document.getElementById("galaxy");
+    const bloomC   = document.getElementById("bloom");
+    const grainC   = document.getElementById("grain");
+    const vigC     = document.getElementById("vignette");
+    const bgCtx    = bgC.getContext("2d");
+    const galCtx   = galC.getContext("2d");
+    const bloomCtx = bloomC.getContext("2d");
+    const grainCtx = grainC.getContext("2d");
+    const vigCtx   = vigC.getContext("2d");
+
+    let W, H, cx, cy, running = false, t = 0;
+
+    /* ── Cámara ── */
+    const cam = { x: 0, y: 0, zoom: 1, targetZoom: 1, angle: 0, autoRotate: true };
+    let dragging = false, dragMoved = false, dragStart = { x: 0, y: 0 }, camStart = { x: 0, y: 0 };
+    let hoveredStar = null, selectedStar = null;
+    let discovered = new Set();
+
+    const TILT = 0.11;
+    const SCALE_Y = Math.cos(TILT);
+    const OFFSET_Y_RATIO = 0.02;
+    const ARM_COUNT = 4;
+
+    /* ── Estrellas interactivas con mensajes ── */
+    const INTERACTIVE_RAW = [
+      { name: "Estrella del Amor",       px: 0,    py: 0,    msg: "Eres la luz que ilumina todo mi universo." },
+      { name: "Estrella de la Sonrisa",  px: 90,   py: -30,  msg: "Tu sonrisa brilla más que mil soles juntos." },
+      { name: "Estrella del Infinito",   px: -120, py: 50,   msg: "Contigo quiero perderme en el infinito, una y otra vez." },
+      { name: "Estrella del Hogar",      px: 180,  py: 80,   msg: "Donde estés tú, ahí está mi hogar." },
+      { name: "Estrella de la Gratitud", px: -200, py: -90,  msg: "Gracias por existir y por cruzarte en mi camino." },
+      { name: "Estrella del Destino",    px: 260,  py: -120, msg: "Entre miles de millones de estrellas, el destino me trajo hasta ti." },
+      { name: "Estrella de la Calma",    px: -280, py: 140,  msg: "Contigo todo es calma, aunque el mundo sea un caos." },
+      { name: "Estrella del Sueño",      px: 340,  py: 40,   msg: "Eres el sueño del que nunca quiero despertar." },
+      { name: "Estrella de la Magia",    px: -60,  py: -220, msg: "Lo nuestro no es casualidad: es pura magia." },
+      { name: "Estrella Eterna",         px: 120,  py: 240,  msg: "Te elegiría en cada vida, en cada galaxia, siempre." }
+    ];
+    let INTERACTIVE = [];
+
+    let bgStars = [];
+    let fgStars = [];
+    let galaxyStars = [];
+    let brightStars = [];
+    let armGlow = [];
+    let dustLanes = [];
+    let hiiRegions = [];
+    let maxR = 400;
+    let grainPattern = null;
+    let galaxyBake = null;
+    let galaxyBakeCtx = null;
+    let galaxyBakeSize = 0;
+
+    /* Conteos optimizados para rendimiento */
+    const GALAXY_STARS = 5200;
+    const DUST_CLOUDS = 90;
+    const ARM_GLOW_EACH = 65;
+    const DUST_LANE_EACH = 50;
+    const HII_REGIONS = 28;
+
+    function resize() {
+      const dpr = Math.min(devicePixelRatio || 1, 1.5);
+      W = innerWidth;
+      H = innerHeight;
+      cx = W / 2;
+      cy = H / 2;
+      maxR = Math.min(W, H) * 0.48;
+      [bgC, galC, bloomC, grainC, vigC].forEach(c => {
+        c.width  = W * dpr;
+        c.height = H * dpr;
+        c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+      });
+      buildGrain();
+    }
+
+    function buildGrain() {
+      const s = 256;
+      const c = document.createElement("canvas");
+      c.width = s; c.height = s;
+      const g = c.getContext("2d");
+      const img = g.createImageData(s, s);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = Math.random() * 255;
+        img.data[i] = img.data[i+1] = img.data[i+2] = v;
+        img.data[i+3] = 255;
+      }
+      g.putImageData(img, 0, 0);
+      grainPattern = grainCtx.createPattern(c, "repeat");
+    }
+
+    function getGalaxyCenter() {
+      return {
+        x: cx + cam.x,
+        y: cy + H * OFFSET_Y_RATIO + cam.y
+      };
+    }
+
+    /* Convierte coordenadas pantalla → espacio galaxia */
+    function screenToGalaxy(sx, sy) {
+      const gc = getGalaxyCenter();
+      let x = sx - gc.x;
+      let y = sy - gc.y;
+      y /= SCALE_Y;
+      const cos = Math.cos(-cam.angle), sin = Math.sin(-cam.angle);
+      const rx = (x * cos - y * sin) / cam.zoom;
+      const ry = (x * sin + y * cos) / cam.zoom;
+      return { x: rx, y: ry };
+    }
+
+    /* Convierte coordenadas galaxia → pantalla */
+    function galaxyToScreen(gx, gy) {
+      const cos = Math.cos(cam.angle), sin = Math.sin(cam.angle);
+      let x = gx * cam.zoom, y = gy * cam.zoom;
+      const rx = x * cos - y * sin;
+      const ry = x * sin + y * cos;
+      const gc = getGalaxyCenter();
+      return { x: gc.x + rx, y: gc.y + ry * SCALE_Y };
+    }
+
+    function buildInteractive() {
+      const scale = maxR / 400;
+      INTERACTIVE = INTERACTIVE_RAW.map(s => ({
+        ...s,
+        px: s.px * scale,
+        py: s.py * scale,
+        hitRadius: 24 * scale
+      }));
+    }
+
+    function buildBgStars() {
+      bgStars = [];
+      fgStars = [];
+      const n = Math.floor(W * H / 1400);
+      for (let i = 0; i < n; i++) {
+        const roll = Math.random();
+        let r, g, b;
+        if (roll < 0.1) { r = 170; g = 195; b = 255; }
+        else if (roll < 0.18) { r = 255; g = 215; b = 165; }
+        else if (roll < 0.22) { r = 255; g = 180; b = 130; }
+        else { r = 215; g = 220; b = 230; }
+        bgStars.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          r: Math.random() * 1.2 + 0.12,
+          cr: r, cg: g, cb: b,
+          a: Math.random() * 0.5 + 0.12,
+          tw: Math.random() * Math.PI * 2,
+          sp: Math.random() * 1.5 + 0.25,
+          depth: Math.random()
+        });
+      }
+
+      const fgPositions = [
+        { x: 0.78, y: 0.42, hue: 210, sat: 15, lit: 96, size: 2.8, spike: 28 },
+        { x: 0.22, y: 0.72, hue: 35,  sat: 45, lit: 88, size: 2.2, spike: 22 },
+        { x: 0.12, y: 0.28, hue: 220, sat: 10, lit: 92, size: 1.6, spike: 16 },
+        { x: 0.88, y: 0.78, hue: 200, sat: 12, lit: 90, size: 1.4, spike: 14 },
+        { x: 0.55, y: 0.12, hue: 45,  sat: 30, lit: 85, size: 1.2, spike: 12 }
+      ];
+      fgPositions.forEach(p => {
+        fgStars.push({
+          x: W * p.x + (Math.random() - 0.5) * W * 0.04,
+          y: H * p.y + (Math.random() - 0.5) * H * 0.04,
+          hue: p.hue, sat: p.sat, lit: p.lit,
+          size: p.size, spike: p.spike,
+          tw: Math.random() * Math.PI * 2,
+          depth: 0.95 + Math.random() * 0.05
+        });
+      });
+    }
+
+    function drawDiffractionSpikes(ctx, x, y, armLen, alpha, hue, sat, lit, lineW) {
+      ctx.save();
+      ctx.strokeStyle = `hsla(${hue},${sat}%,${lit}%,${alpha})`;
+      ctx.lineWidth = lineW;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x - armLen, y);
+      ctx.lineTo(x + armLen, y);
+      ctx.moveTo(x, y - armLen);
+      ctx.lineTo(x, y + armLen);
+      ctx.stroke();
+      ctx.strokeStyle = `hsla(${hue},${sat * 0.5}%,${lit}%,${alpha * 0.35})`;
+      ctx.lineWidth = lineW * 2.2;
+      const s2 = armLen * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(x - s2, y);
+      ctx.lineTo(x + s2, y);
+      ctx.moveTo(x, y - s2);
+      ctx.lineTo(x, y + s2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /* Espiral logarítmica — 4 brazos como galaxia espiral real */
+    function spiralPos(arm, radius, spread) {
+      const tightness = 0.19;
+      const base = (arm / ARM_COUNT) * Math.PI * 2 + 0.15;
+      const angle = base + tightness * Math.log(radius + 18);
+      const perp = (Math.random() - 0.5) * spread;
+      const ca = Math.cos(angle), sa = Math.sin(angle);
+      return {
+        px: ca * radius - sa * perp,
+        py: sa * radius + ca * perp,
+        angle
+      };
+    }
+
+    function starSpectral(dist01, inArm, armStrength) {
+      const r = Math.random();
+      if (dist01 < 0.12) {
+        return {
+          hue: 42 + Math.random() * 18,
+          sat: 18 + Math.random() * 25,
+          lit: 86 + Math.random() * 12,
+          size: 1.2 + Math.random() * 2.0,
+          alpha: 0.45 + Math.random() * 0.5
+        };
+      }
+      if (inArm && dist01 < 0.62) {
+        if (r < 0.14 || armStrength > 0.7) {
+          return {
+            hue: 205 + Math.random() * 18,
+            sat: 28 + Math.random() * 22,
+            lit: 84 + Math.random() * 12,
+            size: 1.6 + Math.random() * 2.8,
+            alpha: 0.55 + Math.random() * 0.4,
+            bright: true
+          };
+        }
+        if (r < 0.38) {
+          return {
+            hue: 38 + Math.random() * 22,
+            sat: 35 + Math.random() * 28,
+            lit: 68 + Math.random() * 18,
+            size: 0.6 + Math.random() * 1.2,
+            alpha: 0.25 + Math.random() * 0.35
+          };
+        }
+        return {
+          hue: 32 + Math.random() * 15,
+          sat: 30 + Math.random() * 25,
+          lit: 58 + Math.random() * 15,
+          size: 0.4 + Math.random() * 0.9,
+          alpha: 0.15 + Math.random() * 0.28
+        };
+      }
+      if (r < 0.12) {
+        return {
+          hue: 20 + Math.random() * 18,
+          sat: 40 + Math.random() * 25,
+          lit: 50 + Math.random() * 18,
+          size: 0.35 + Math.random() * 0.7,
+          alpha: 0.1 + Math.random() * 0.2
+        };
+      }
+      return {
+        hue: 220 + Math.random() * 15,
+        sat: 8 + Math.random() * 12,
+        lit: 55 + Math.random() * 18,
+        size: 0.25 + Math.random() * 0.6,
+        alpha: 0.06 + Math.random() * 0.15
+      };
+    }
+
+    function buildGalaxy() {
+      galaxyStars = [];
+      brightStars = [];
+      armGlow = [];
+      dustLanes = [];
+      hiiRegions = [];
+
+      for (let i = 0; i < GALAXY_STARS; i++) {
+        const dist01 = Math.pow(Math.random(), 0.68);
+        const radius = dist01 * maxR;
+        const arm = Math.floor(Math.random() * ARM_COUNT);
+        const spread = (22 + radius * 0.072) * (1.12 - dist01 * 0.22);
+        const { px, py, angle } = spiralPos(arm, radius, spread);
+
+        const armOffset = Math.abs((Math.random() - 0.5) * 2);
+        const inArm = armOffset < 0.32;
+        const armStrength = 1 - armOffset / 0.32;
+        const spec = starSpectral(dist01, inArm, armStrength);
+
+        const bright = spec.bright || (Math.random() < 0.008 && dist01 < 0.5 && inArm);
+        let { hue, sat, lit, alpha, size } = spec;
+        if (bright && !spec.bright) {
+          size *= 1.8;
+          alpha = Math.min(alpha * 1.6, 1);
+          lit = Math.min(lit + 8, 98);
+        }
+
+        const star = {
+          px, py, radius, dist01, hue, sat, lit, alpha,
+          size: size * 1.15,
+          bright: bright || spec.bright,
+          layer: dist01,
+          angle,
+          color: `hsla(${hue},${sat}%,${lit}%,${alpha})`,
+          haloColor: `hsla(${hue},${Math.min(sat, 35)}%,${lit}%,${alpha * 0.32})`
+        };
+
+        if (star.bright) brightStars.push(star);
+        else galaxyStars.push(star);
+      }
+
+      for (let arm = 0; arm < ARM_COUNT; arm++) {
+        for (let i = 0; i < ARM_GLOW_EACH; i++) {
+          const radius = 25 + Math.pow(Math.random(), 0.72) * maxR * 0.92;
+          const spread = 24 + radius * 0.05;
+          const { px, py, angle } = spiralPos(arm, radius, (Math.random() - 0.5) * spread);
+          armGlow.push({
+            px, py, angle,
+            w: 14 + Math.random() * 38,
+            h: 45 + Math.random() * 95,
+            alpha: 0.022 + Math.random() * 0.038,
+            hue: 32 + Math.random() * 18,
+            sat: 25 + Math.random() * 20,
+            lit: 45 + Math.random() * 15
+          });
+        }
+      }
+
+      for (let arm = 0; arm < ARM_COUNT; arm++) {
+        for (let i = 0; i < DUST_LANE_EACH; i++) {
+          const radius = 35 + Math.pow(Math.random(), 0.75) * maxR * 0.88;
+          const side = arm % 2 === 0 ? 1 : -1;
+          const offset = (Math.random() - 0.5) * 32 + side * (10 + radius * 0.045);
+          const { px, py, angle } = spiralPos(arm, radius, offset);
+          dustLanes.push({
+            px, py,
+            w: 7 + Math.random() * 20,
+            h: 28 + Math.random() * 75,
+            rot: angle + Math.PI / 2 + (Math.random() - 0.5) * 0.3,
+            alpha: 0.065 + Math.random() * 0.095,
+            warm: Math.random() < 0.35
+          });
+        }
+      }
+
+      for (let i = 0; i < HII_REGIONS; i++) {
+        const radius = 50 + Math.random() * maxR * 0.7;
+        const arm = Math.floor(Math.random() * ARM_COUNT);
+        const { px, py } = spiralPos(arm, radius, (Math.random() - 0.5) * 22);
+        const isBlue = Math.random() < 0.55;
+        hiiRegions.push({
+          px, py,
+          r: 16 + Math.random() * 32,
+          alpha: 0.04 + Math.random() * 0.055,
+          hue: isBlue ? 210 + Math.random() * 15 : 340 + Math.random() * 20,
+          sat: isBlue ? 35 : 50
+        });
+      }
+
+      for (let i = 0; i < DUST_CLOUDS; i++) {
+        const dist01 = Math.pow(Math.random(), 0.7);
+        const radius = dist01 * maxR * 0.92;
+        const arm = Math.floor(Math.random() * ARM_COUNT);
+        const { px, py } = spiralPos(arm, radius, (Math.random() - 0.5) * 58);
+        const dh = 28 + Math.random() * 12;
+        const ds = 28 + Math.random() * 15;
+        const dl = 10 + Math.random() * 8;
+        const da = 0.025 + Math.random() * 0.05;
+        galaxyStars.push({
+          px, py, radius, dist01,
+          size: Math.random() * 52 + 22,
+          dust: true,
+          layer: dist01,
+          color: `hsla(${dh},${ds}%,${dl}%,${da})`
+        });
+      }
+
+      galaxyStars.sort((a, b) => a.layer - b.layer);
+      bakeGalaxy();
+    }
+
+    function bakeGalaxy() {
+      galaxyBakeSize = Math.ceil(maxR * 2.45);
+      if (!galaxyBake) {
+        galaxyBake = document.createElement("canvas");
+        galaxyBakeCtx = galaxyBake.getContext("2d");
+      }
+      galaxyBake.width = galaxyBakeSize;
+      galaxyBake.height = galaxyBakeSize;
+      const b = galaxyBakeCtx;
+      const half = galaxyBakeSize / 2;
+      const diskR = maxR * 1.08;
+
+      b.clearRect(0, 0, galaxyBakeSize, galaxyBakeSize);
+      b.save();
+      b.translate(half, half);
+
+      const halo = b.createRadialGradient(0, 0, diskR * 0.08, 0, 0, diskR);
+      halo.addColorStop(0,    "rgba(255,240,210,0.28)");
+      halo.addColorStop(0.05, "rgba(255,215,165,0.18)");
+      halo.addColorStop(0.18, "rgba(200,175,140,0.1)");
+      halo.addColorStop(0.4,  "rgba(166,141,122,0.045)");
+      halo.addColorStop(0.65, "rgba(80,65,55,0.02)");
+      halo.addColorStop(0.88, "rgba(30,25,20,0.008)");
+      halo.addColorStop(1,    "transparent");
+      b.fillStyle = halo;
+      b.beginPath();
+      b.arc(0, 0, diskR, 0, Math.PI * 2);
+      b.fill();
+
+      armGlow.forEach(g => {
+        b.save();
+        b.translate(g.px, g.py);
+        b.rotate(g.angle + Math.PI / 2);
+        const grad = b.createRadialGradient(0, 0, 0, 0, 0, g.h);
+        grad.addColorStop(0, `hsla(${g.hue},${g.sat}%,${g.lit + 15}%,${g.alpha * 1.4})`);
+        grad.addColorStop(0.45, `hsla(${g.hue},${g.sat}%,${g.lit}%,${g.alpha})`);
+        grad.addColorStop(1, "transparent");
+        b.fillStyle = grad;
+        b.beginPath();
+        b.ellipse(0, 0, g.w, g.h, 0, 0, Math.PI * 2);
+        b.fill();
+        b.restore();
+      });
+
+      hiiRegions.forEach(n => {
+        const g = b.createRadialGradient(n.px, n.py, 0, n.px, n.py, n.r);
+        g.addColorStop(0, `hsla(${n.hue},${n.sat}%,72%,${n.alpha * 1.6})`);
+        g.addColorStop(0.35, `hsla(${n.hue},${n.sat * 0.8}%,58%,${n.alpha})`);
+        g.addColorStop(1, "transparent");
+        b.fillStyle = g;
+        b.beginPath();
+        b.arc(n.px, n.py, n.r, 0, Math.PI * 2);
+        b.fill();
+      });
+
+      dustLanes.forEach(d => {
+        b.save();
+        b.translate(d.px, d.py);
+        b.rotate(d.rot);
+        const g = b.createRadialGradient(0, 0, 0, 0, 0, d.h);
+        if (d.warm) {
+          g.addColorStop(0, `rgba(43,27,23,${d.alpha * 1.3})`);
+          g.addColorStop(0.4, `rgba(60,38,28,${d.alpha * 0.9})`);
+        } else {
+          g.addColorStop(0, `rgba(12,6,4,${d.alpha * 1.5})`);
+          g.addColorStop(0.4, `rgba(20,10,6,${d.alpha})`);
+        }
+        g.addColorStop(1, "transparent");
+        b.fillStyle = g;
+        b.beginPath();
+        b.ellipse(0, 0, d.w, d.h, 0, 0, Math.PI * 2);
+        b.fill();
+        b.restore();
+      });
+
+      galaxyStars.forEach(s => {
+        b.beginPath();
+        b.arc(s.px, s.py, s.dust ? s.size : Math.max(s.size, 0.35), 0, Math.PI * 2);
+        b.fillStyle = s.color;
+        b.fill();
+      });
+
+      const coreR = diskR * 0.1;
+      b.save();
+      b.rotate(0.25);
+      const core1 = b.createRadialGradient(0, 0, 0, 0, 0, coreR);
+      core1.addColorStop(0,   "rgba(255,255,248,1)");
+      core1.addColorStop(0.12, "rgba(255,252,220,0.95)");
+      core1.addColorStop(0.35, "rgba(255,235,180,0.55)");
+      core1.addColorStop(0.6,  "rgba(255,200,130,0.15)");
+      core1.addColorStop(1,   "transparent");
+      b.fillStyle = core1;
+      b.beginPath();
+      b.ellipse(0, 0, coreR * 1.15, coreR * 0.85, 0, 0, Math.PI * 2);
+      b.fill();
+      b.restore();
+
+      const core2 = b.createRadialGradient(0, 0, 0, 0, 0, coreR * 3.5);
+      core2.addColorStop(0,   "rgba(255,235,190,0.42)");
+      core2.addColorStop(0.25, "rgba(255,210,150,0.14)");
+      core2.addColorStop(0.5,  "rgba(200,170,120,0.05)");
+      core2.addColorStop(0.75, "rgba(120,95,70,0.015)");
+      core2.addColorStop(1,   "transparent");
+      b.fillStyle = core2;
+      b.beginPath();
+      b.arc(0, 0, coreR * 3.5, 0, Math.PI * 2);
+      b.fill();
+
+      b.restore();
+    }
+
+    function drawBackground() {
+      bgCtx.fillStyle = "#000002";
+      bgCtx.fillRect(0, 0, W, H);
+
+      const parX = cam.x * 0.08;
+      const parY = cam.y * 0.08;
+
+      /* Campo estelar denso con parallax */
+      bgStars.forEach(s => {
+        const px = s.x + parX * (0.15 + s.depth * 0.45);
+        const py = s.y + parY * (0.15 + s.depth * 0.45);
+        bgCtx.beginPath();
+        bgCtx.arc(px, py, s.r, 0, Math.PI * 2);
+        bgCtx.fillStyle = `rgba(${s.cr},${s.cg},${s.cb},${s.a})`;
+        bgCtx.fill();
+      });
+
+      /* Estrellas brillantes de primer plano con difracción */
+      fgStars.forEach(s => {
+        const flick = 0.88 + 0.12 * Math.sin(t * 0.8 + s.tw);
+        const px = s.x + parX * s.depth * 0.6;
+        const py = s.y + parY * s.depth * 0.6;
+        const halo = bgCtx.createRadialGradient(px, py, 0, px, py, s.size * 6);
+        halo.addColorStop(0, `hsla(${s.hue},${s.sat}%,${s.lit}%,${0.35 * flick})`);
+        halo.addColorStop(0.3, `hsla(${s.hue},${s.sat * 0.6}%,${s.lit}%,${0.08 * flick})`);
+        halo.addColorStop(1, "transparent");
+        bgCtx.fillStyle = halo;
+        bgCtx.beginPath();
+        bgCtx.arc(px, py, s.size * 6, 0, Math.PI * 2);
+        bgCtx.fill();
+        bgCtx.beginPath();
+        bgCtx.arc(px, py, s.size * 0.6, 0, Math.PI * 2);
+        bgCtx.fillStyle = `hsla(${s.hue},${s.sat * 0.4}%,98%,${0.95 * flick})`;
+        bgCtx.fill();
+        drawDiffractionSpikes(bgCtx, px, py, s.spike, 0.45 * flick, s.hue, s.sat, s.lit, 0.45);
+      });
+    }
+
+    function drawInteractiveStars() {
+      galCtx.globalCompositeOperation = "lighter";
+
+      INTERACTIVE.forEach(star => {
+        const isHovered = hoveredStar === star;
+        const isSelected = selectedStar === star;
+        const isDiscovered = discovered.has(star);
+        const pulse = 0.75 + 0.25 * Math.sin(t * 2 + star.px * 0.01);
+        const baseSize = 6 * pulse;
+
+        /* Corona de la estrella */
+        const corona = galCtx.createRadialGradient(star.px, star.py, 0, star.px, star.py, baseSize * 5);
+        corona.addColorStop(0, isDiscovered ? "rgba(200,190,255,0.5)" : "rgba(255,240,200,0.55)");
+        corona.addColorStop(0.2, isDiscovered ? "rgba(160,140,255,0.2)" : "rgba(255,220,150,0.25)");
+        corona.addColorStop(1, "transparent");
+        galCtx.fillStyle = corona;
+        galCtx.beginPath();
+        galCtx.arc(star.px, star.py, baseSize * 5, 0, Math.PI * 2);
+        galCtx.fill();
+
+        /* Anillo */
+        const ringAlpha = isHovered || isSelected ? 0.65 : isDiscovered ? 0.3 : 0.45;
+        galCtx.beginPath();
+        galCtx.arc(star.px, star.py, baseSize * 2.2, 0, Math.PI * 2);
+        galCtx.strokeStyle = isDiscovered
+          ? `rgba(180,160,255,${ringAlpha * pulse})`
+          : `rgba(255,215,130,${ringAlpha * pulse})`;
+        galCtx.lineWidth = isHovered ? 1.5 : 0.8;
+        galCtx.stroke();
+
+        /* Núcleo */
+        const core = galCtx.createRadialGradient(star.px, star.py, 0, star.px, star.py, baseSize);
+        core.addColorStop(0, "rgba(255,255,250,1)");
+        core.addColorStop(0.5, isDiscovered ? "rgba(200,180,255,0.9)" : "rgba(255,235,180,0.95)");
+        core.addColorStop(1, isDiscovered ? "rgba(140,120,220,0.4)" : "rgba(255,200,100,0.4)");
+        galCtx.fillStyle = core;
+        galCtx.beginPath();
+        galCtx.arc(star.px, star.py, baseSize, 0, Math.PI * 2);
+        galCtx.fill();
+
+        /* Difracción telescópica */
+        const arm = baseSize * 4;
+        galCtx.strokeStyle = `rgba(255,245,220,${0.3 * pulse})`;
+        galCtx.lineWidth = 0.5;
+        galCtx.beginPath();
+        galCtx.moveTo(star.px - arm, star.py);
+        galCtx.lineTo(star.px + arm, star.py);
+        galCtx.moveTo(star.px, star.py - arm);
+        galCtx.lineTo(star.px, star.py + arm);
+        galCtx.stroke();
+
+        if (isHovered && !document.getElementById("starModal").classList.contains("open")) {
+          galCtx.globalCompositeOperation = "source-over";
+          galCtx.save();
+          galCtx.setTransform(1, 0, 0, 1, 0, 0);
+          const sp = galaxyToScreen(star.px, star.py);
+          galCtx.font = "11px Georgia";
+          galCtx.textAlign = "center";
+          galCtx.fillStyle = "rgba(255, 240, 220, 0.92)";
+          galCtx.shadowBlur = 6;
+          galCtx.shadowColor = "rgba(255, 200, 120, 0.7)";
+          galCtx.fillText(star.name, sp.x, sp.y - 20);
+          galCtx.shadowBlur = 0;
+          galCtx.restore();
+          galCtx.globalCompositeOperation = "lighter";
+        }
+      });
+
+      galCtx.globalCompositeOperation = "source-over";
+    }
+
+    function drawGalaxy() {
+      galCtx.clearRect(0, 0, W, H);
+
+      const gc = getGalaxyCenter();
+      galCtx.save();
+      galCtx.translate(gc.x, gc.y);
+      galCtx.scale(cam.zoom, cam.zoom * SCALE_Y);
+      galCtx.rotate(cam.angle);
+
+      if (galaxyBake) {
+        const half = galaxyBakeSize / 2;
+        galCtx.drawImage(galaxyBake, -half, -half, galaxyBakeSize, galaxyBakeSize);
+      }
+
+      /* Solo estrellas brillantes se redibujan cada frame */
+      galCtx.globalCompositeOperation = "lighter";
+      const invZoom = 1 / cam.zoom;
+      brightStars.forEach(s => {
+        const sz = Math.max(s.size * invZoom, 0.4);
+        galCtx.beginPath();
+        galCtx.arc(s.px, s.py, sz * 2.2, 0, Math.PI * 2);
+        galCtx.fillStyle = s.haloColor;
+        galCtx.fill();
+        galCtx.beginPath();
+        galCtx.arc(s.px, s.py, sz, 0, Math.PI * 2);
+        galCtx.fillStyle = s.color;
+        galCtx.fill();
+      });
+
+      drawInteractiveStars();
+      galCtx.restore();
+    }
+
+    function drawBloom() {
+      bloomCtx.clearRect(0, 0, W, H);
+
+      bloomCtx.filter = "blur(20px) brightness(1.45) saturate(1.12)";
+      bloomCtx.globalAlpha = 0.34;
+      bloomCtx.drawImage(galC, 0, 0, W, H);
+
+      const gc = getGalaxyCenter();
+      bloomCtx.filter = "blur(6px) brightness(2)";
+      bloomCtx.globalAlpha = 0.45;
+      bloomCtx.beginPath();
+      bloomCtx.ellipse(gc.x, gc.y, maxR * 0.09 * cam.zoom, maxR * 0.07 * cam.zoom, cam.angle, 0, Math.PI * 2);
+      bloomCtx.fillStyle = "#fff8e8";
+      bloomCtx.fill();
+
+      bloomCtx.filter = "none";
+      bloomCtx.globalAlpha = 1;
+    }
+
+    function drawVignette() {
+      vigCtx.clearRect(0, 0, W, H);
+      const vig = vigCtx.createRadialGradient(cx, cy, Math.min(W, H) * 0.2, cx, cy, Math.min(W, H) * 0.95);
+      vig.addColorStop(0, "transparent");
+      vig.addColorStop(0.55, "rgba(0,0,3,0.08)");
+      vig.addColorStop(0.85, "rgba(0,0,5,0.45)");
+      vig.addColorStop(1, "rgba(0,0,2,0.75)");
+      vigCtx.fillStyle = vig;
+      vigCtx.fillRect(0, 0, W, H);
+    }
+
+    function drawGrain() {
+      if (!grainPattern) return;
+      grainCtx.clearRect(0, 0, W, H);
+      grainCtx.fillStyle = grainPattern;
+      grainCtx.fillRect(0, 0, W, H);
+    }
+
+    function findStarAt(sx, sy) {
+      const g = screenToGalaxy(sx, sy);
+      let closest = null, minDist = Infinity;
+
+      INTERACTIVE.forEach(star => {
+        const dx = g.x - star.px;
+        const dy = g.y - star.py;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const threshold = star.hitRadius || 24;
+        if (dist < threshold && dist < minDist) {
+          minDist = dist;
+          closest = star;
+        }
+      });
+      return closest;
+    }
+
+    function updateProgress() {
+      document.getElementById("progress").textContent =
+        `Estrellas descubiertas: ${discovered.size} / ${INTERACTIVE.length}`;
+    }
+
+    function openStarModal(star) {
+      selectedStar = star;
+      discovered.add(star);
+      updateProgress();
+
+      document.getElementById("starName").textContent = star.name;
+      document.getElementById("starText").textContent = star.msg;
+      document.getElementById("starCounter").textContent =
+        `${discovered.size} de ${INTERACTIVE.length} estrellas encontradas`;
+
+      document.getElementById("starModal").classList.add("open");
+      cam.autoRotate = false;
+    }
+
+    function closeStarModal() {
+      document.getElementById("starModal").classList.remove("open");
+      selectedStar = null;
+      setTimeout(() => { cam.autoRotate = true; }, 3000);
+    }
+
+    function frame() {
+      if (!running) return;
+      t += 0.016;
+
+      cam.zoom += (cam.targetZoom - cam.zoom) * 0.08;
+      if (cam.autoRotate && !dragging) cam.angle += 0.0008;
+
+      drawBackground();
+      drawGalaxy();
+      drawBloom();
+      drawGrain();
+      drawVignette();
+
+      requestAnimationFrame(frame);
+    }
+
+    /* ── Controles: arrastrar ── */
+    galC.addEventListener("mousedown", e => {
+      if (!running) return;
+      dragging = true;
+      dragMoved = false;
+      galC.classList.add("dragging");
+      dragStart = { x: e.clientX, y: e.clientY };
+      camStart = { x: cam.x, y: cam.y };
+      cam.autoRotate = false;
+    });
+
+    window.addEventListener("mousemove", e => {
+      if (!running) return;
+
+      if (dragging) {
+        const dx = e.clientX - dragStart.x;
+        const dy = e.clientY - dragStart.y;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragMoved = true;
+        cam.x = camStart.x + dx;
+        cam.y = camStart.y + dy;
+      }
+
+      if (!document.getElementById("starModal").classList.contains("open")) {
+        hoveredStar = findStarAt(e.clientX, e.clientY);
+        galC.style.cursor = hoveredStar ? "pointer" : dragging ? "grabbing" : "grab";
+      }
+    });
+
+    window.addEventListener("mouseup", () => {
+      dragging = false;
+      galC.classList.remove("dragging");
+    });
+
+    /* ── Zoom con rueda ── */
+    galC.addEventListener("wheel", e => {
+      if (!running) return;
+      e.preventDefault();
+      cam.autoRotate = false;
+
+      const delta = e.deltaY > 0 ? 0.92 : 1.08;
+      const newZoom = Math.max(0.4, Math.min(4, cam.targetZoom * delta));
+
+      /* Zoom hacia el cursor */
+      const before = screenToGalaxy(e.clientX, e.clientY);
+      cam.targetZoom = newZoom;
+      cam.zoom = newZoom;
+      const after = screenToGalaxy(e.clientX, e.clientY);
+      cam.x += (after.x - before.x) * cam.zoom * Math.cos(cam.angle) - (after.y - before.y) * cam.zoom * Math.sin(cam.angle);
+      cam.y += (after.x - before.x) * cam.zoom * Math.sin(cam.angle) + (after.y - before.y) * cam.zoom * Math.cos(cam.angle) * SCALE_Y;
+
+      setTimeout(() => { if (!dragging) cam.autoRotate = true; }, 4000);
+    }, { passive: false });
+
+    /* ── Clic en estrella ── */
+    galC.addEventListener("click", e => {
+      if (!running || dragMoved) return;
+      const star = findStarAt(e.clientX, e.clientY);
+      if (star) openStarModal(star);
+    });
+
+    /* ── Touch (móvil) ── */
+    let lastTouchDist = null;
+    galC.addEventListener("touchstart", e => {
+      if (!running) return;
+      cam.autoRotate = false;
+      if (e.touches.length === 1) {
+        dragging = true;
+        dragMoved = false;
+        dragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        camStart = { x: cam.x, y: cam.y };
+      } else if (e.touches.length === 2) {
+        lastTouchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    }, { passive: true });
+
+    galC.addEventListener("touchmove", e => {
+      if (!running) return;
+      if (e.touches.length === 1 && dragging) {
+        const dx = e.touches[0].clientX - dragStart.x;
+        const dy = e.touches[0].clientY - dragStart.y;
+        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) dragMoved = true;
+        cam.x = camStart.x + dx;
+        cam.y = camStart.y + dy;
+      } else if (e.touches.length === 2 && lastTouchDist) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        cam.targetZoom = Math.max(0.4, Math.min(4, cam.targetZoom * (dist / lastTouchDist)));
+        lastTouchDist = dist;
+      }
+    }, { passive: true });
+
+    galC.addEventListener("touchend", e => {
+      if (e.changedTouches.length === 1 && !dragMoved) {
+        const star = findStarAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+        if (star) openStarModal(star);
+      }
+      dragging = false;
+      lastTouchDist = null;
+    });
+
+    document.getElementById("starClose").addEventListener("click", closeStarModal);
+    document.getElementById("starModal").addEventListener("click", e => {
+      if (e.target === document.getElementById("starModal")) closeStarModal();
+    });
+
+    window.addEventListener("resize", () => {
+      resize();
+      buildBgStars();
+      buildGalaxy();
+      buildInteractive();
+    });
+
+    resize();
+    buildBgStars();
+    buildGalaxy();
+    buildInteractive();
+    updateProgress();
+
+    document.getElementById("enterBtn").addEventListener("click", () => {
+      document.getElementById("intro").classList.add("hidden");
+      wrap.classList.add("active");
+      document.getElementById("hud").classList.add("visible");
+      running = true;
+      requestAnimationFrame(frame);
+
+      const msg = document.getElementById("message");
+      setTimeout(() => msg.classList.add("visible"), 600);
+      setTimeout(() => msg.classList.add("fade-out"), 5500);
+    });
+  </script>
+</body>
+</html>
