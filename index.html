@@ -477,9 +477,9 @@
       ctx.restore();
     }
 
-    /* Espiral logarítmica — 4 brazos como galaxia espiral real */
+    /* Espiral logarítmica — 2 brazos como Andrómeda */
     function spiralPos(arm, radius, spread) {
-      const tightness = 0.35;
+      const tightness = 0.08;
       const base = (arm / ARM_COUNT) * Math.PI * 2 + 0.15;
       const angle = base + tightness * Math.log(radius + 18);
       const perp = (Math.random() - 0.5) * spread;
@@ -559,7 +559,7 @@
         const dist01 = Math.pow(Math.random(), 0.68);
         const radius = dist01 * maxR;
         const arm = Math.floor(Math.random() * ARM_COUNT);
-        const spread = (22 + radius * 0.072) * (1.12 - dist01 * 0.22);
+        const spread = (70 + radius * 0.15) * (1.12 - dist01 * 0.22);
         const { px, py, angle } = spiralPos(arm, radius, spread);
 
         const armOffset = Math.abs((Math.random() - 0.5) * 2);
@@ -885,7 +885,7 @@
       const gc = getGalaxyCenter();
       galCtx.save();
       galCtx.translate(gc.x, gc.y);
-      galCtx.scale(cam.zoom, cam.zoom * SCALE_Y);
+      galCtx.scale(cam.zoom * 1.8, cam.zoom * 0.55);
       galCtx.rotate(cam.angle);
 
       if (galaxyBake) {
