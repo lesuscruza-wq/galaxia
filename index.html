@@ -306,7 +306,7 @@
     const TILT = 0.11;
     const SCALE_Y = Math.cos(TILT);
     const OFFSET_Y_RATIO = 0.02;
-    const ARM_COUNT = 4;
+    const ARM_COUNT = 2;
 
     /* ── Estrellas interactivas con mensajes ── */
     const INTERACTIVE_RAW = [
@@ -349,7 +349,7 @@
       H = innerHeight;
       cx = W / 2;
       cy = H / 2;
-      maxR = Math.min(W, H) * 0.48;
+      maxR = Math.min(W, H) * 0.7;
       [bgC, galC, bloomC, grainC, vigC].forEach(c => {
         c.width  = W * dpr;
         c.height = H * dpr;
@@ -479,7 +479,7 @@
 
     /* Espiral logarítmica — 4 brazos como galaxia espiral real */
     function spiralPos(arm, radius, spread) {
-      const tightness = 0.19;
+      const tightness = 0.35;
       const base = (arm / ARM_COUNT) * Math.PI * 2 + 0.15;
       const angle = base + tightness * Math.log(radius + 18);
       const perp = (Math.random() - 0.5) * spread;
@@ -741,7 +741,7 @@
         b.fill();
       });
 
-      const coreR = diskR * 0.1;
+      const coreR = diskR * 0.18;
       b.save();
       b.rotate(0.25);
       const core1 = b.createRadialGradient(0, 0, 0, 0, 0, coreR);
