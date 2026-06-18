@@ -349,7 +349,7 @@
       H = innerHeight;
       cx = W / 2;
       cy = H / 2;
-      maxR = Math.min(W, H) * 0.78;
+      maxR = Math.min(W, H) * 0.74;
       [bgC, galC, bloomC, grainC, vigC].forEach(c => {
         c.width  = W * dpr;
         c.height = H * dpr;
@@ -598,8 +598,8 @@
 
       for (let arm = 0; arm < ARM_COUNT; arm++) {
         for (let i = 0; i < ARM_GLOW_EACH; i++) {
-          const radius = 25 + Math.pow(Math.random(), 0.72) * maxR * 1.35;
-          const spread = 110 + radius * 0.20;
+          const radius = 25 + Math.pow(Math.random(), 0.72) * maxR * 1.30;
+          const spread = 90 + radius * 0.18;
           let { px, py, angle } = spiralPos(arm, radius, (Math.random() - 0.5) * spread);
           const f = radius / maxR;
           if (f > 0.55) {
@@ -726,7 +726,7 @@
       b.globalAlpha = 0.04;
       b.fillStyle = "rgba(255,235,210,0.16)";
       b.beginPath();
-      b.ellipse(0, 0, maxR * 1.55, maxR * 0.72, 0, 0, Math.PI * 2);
+      b.ellipse(0, 0, maxR * 1.45, maxR * 0.68, 0, 0, Math.PI * 2);
       b.fill();
       b.globalAlpha = 1;
       b.filter = "none";
