@@ -339,7 +339,7 @@
     /* Conteos optimizados para rendimiento */
     const GALAXY_STARS = 5200;
     const DUST_CLOUDS = 90;
-    const ARM_GLOW_EACH = 65;
+    const ARM_GLOW_EACH = 120;
     const DUST_LANE_EACH = 50;
     const HII_REGIONS = 28;
 
@@ -598,14 +598,14 @@
 
       for (let arm = 0; arm < ARM_COUNT; arm++) {
         for (let i = 0; i < ARM_GLOW_EACH; i++) {
-          const radius = 25 + Math.pow(Math.random(), 0.72) * maxR * 0.92;
-          const spread = 24 + radius * 0.05;
+          const radius = 25 + Math.pow(Math.random(), 0.72) * maxR * 1.12;
+          const spread = 40 + radius * 0.08;
           const { px, py, angle } = spiralPos(arm, radius, (Math.random() - 0.5) * spread);
           armGlow.push({
             px, py, angle,
-            w: (14 + Math.random() * 38) * (0.6 + Math.random() * 1.8),
-            h: 45 + Math.random() * 95,
-            alpha: (0.022 + Math.random() * 0.038) * (0.4 + Math.random() * 1.8),
+            w: 30 + Math.random() * 30,
+            h: 120 + Math.random() * 140,
+            alpha: (0.012 + Math.random() * 0.025) * (0.5 + Math.random() * 0.9),
             hue: 32 + Math.random() * 18,
             sat: 25 + Math.random() * 20,
             lit: 45 + Math.random() * 15
@@ -740,6 +740,34 @@
         b.fill();
         b.restore();
       });
+
+      b.save();
+      b.globalCompositeOperation = "lighter";
+      b.filter = "blur(90px)";
+      b.globalAlpha = 0.015;
+      for (let arm = 0; arm < ARM_COUNT; arm++) {
+        for (let i = 0; i < 10; i++) {
+          const radius = maxR * (0.25 + Math.pow(Math.random(), 0.6) * 0.95);
+          const spread = 80 + radius * 0.12;
+          const { px, py, angle } = spiralPos(arm, radius, (Math.random() - 0.5) * spread);
+          const w = maxR * (0.2 + Math.random() * 0.17);
+          const h = maxR * (0.35 + Math.random() * 0.22);
+          const glow = b.createRadialGradient(0, 0, 0, 0, 0, h);
+          glow.addColorStop(0, "rgba(255,240,210,0.08)");
+          glow.addColorStop(1, "transparent");
+          b.fillStyle = glow;
+          b.save();
+          b.translate(px, py);
+          b.rotate(angle + Math.PI / 2);
+          b.beginPath();
+          b.ellipse(0, 0, w, h, 0, 0, Math.PI * 2);
+          b.fill();
+          b.restore();
+        }
+      }
+      b.filter = "none";
+      b.globalAlpha = 1;
+      b.restore();
 
       hiiRegions.forEach(n => {
         const g = b.createRadialGradient(n.px, n.py, 0, n.px, n.py, n.r);
