@@ -349,7 +349,7 @@
       H = innerHeight;
       cx = W / 2;
       cy = H / 2;
-      maxR = Math.min(W, H) * 0.7;
+      maxR = Math.min(W, H) * 0.78;
       [bgC, galC, bloomC, grainC, vigC].forEach(c => {
         c.width  = W * dpr;
         c.height = H * dpr;
@@ -598,14 +598,20 @@
 
       for (let arm = 0; arm < ARM_COUNT; arm++) {
         for (let i = 0; i < ARM_GLOW_EACH; i++) {
-          const radius = 25 + Math.pow(Math.random(), 0.72) * maxR * 1.12;
-          const spread = 40 + radius * 0.08;
-          const { px, py, angle } = spiralPos(arm, radius, (Math.random() - 0.5) * spread);
+          const radius = 25 + Math.pow(Math.random(), 0.72) * maxR * 1.35;
+          const spread = 110 + radius * 0.20;
+          let { px, py, angle } = spiralPos(arm, radius, (Math.random() - 0.5) * spread);
+          const f = radius / maxR;
+          if (f > 0.55) {
+            const expand = 1 + (f - 0.55) * 0.45;
+            px *= expand;
+            py *= expand;
+          }
           armGlow.push({
             px, py, angle,
-            w: 30 + Math.random() * 30,
-            h: 120 + Math.random() * 140,
-            alpha: (0.012 + Math.random() * 0.025) * (0.5 + Math.random() * 0.9),
+            w: (45 + Math.random() * 45) * (0.8 + f * 0.7),
+            h: (180 + Math.random() * 220) * (0.9 + f * 1.0),
+            alpha: (0.010 + Math.random() * 0.020) * (1.0 - f * 0.25),
             hue: 32 + Math.random() * 18,
             sat: 25 + Math.random() * 20,
             lit: 45 + Math.random() * 15
@@ -696,7 +702,7 @@
       galaxyBake.height = galaxyBakeSize;
       const b = galaxyBakeCtx;
       const half = galaxyBakeSize / 2;
-      const diskR = maxR * 1.08;
+      const diskR = maxR * 1.20;
 
       b.clearRect(0, 0, galaxyBakeSize, galaxyBakeSize);
       b.save();
@@ -720,7 +726,7 @@
       b.globalAlpha = 0.04;
       b.fillStyle = "rgba(255,235,210,0.16)";
       b.beginPath();
-      b.ellipse(0, 0, maxR * 1.3, maxR * 0.55, 0, 0, Math.PI * 2);
+      b.ellipse(0, 0, maxR * 1.55, maxR * 0.72, 0, 0, Math.PI * 2);
       b.fill();
       b.globalAlpha = 1;
       b.filter = "none";
@@ -746,12 +752,12 @@
       b.filter = "blur(90px)";
       b.globalAlpha = 0.015;
       for (let arm = 0; arm < ARM_COUNT; arm++) {
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 16; i++) {
           const radius = maxR * (0.25 + Math.pow(Math.random(), 0.6) * 0.95);
           const spread = 80 + radius * 0.12;
           const { px, py, angle } = spiralPos(arm, radius, (Math.random() - 0.5) * spread);
-          const w = maxR * (0.2 + Math.random() * 0.17);
-          const h = maxR * (0.35 + Math.random() * 0.22);
+          const w = maxR * (0.28 + Math.random() * 0.22);
+          const h = maxR * (0.48 + Math.random() * 0.35);
           const glow = b.createRadialGradient(0, 0, 0, 0, 0, h);
           glow.addColorStop(0, "rgba(255,240,210,0.08)");
           glow.addColorStop(1, "transparent");
