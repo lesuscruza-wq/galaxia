@@ -569,11 +569,16 @@
 
         const bright = spec.bright || (Math.random() < 0.008 && dist01 < 0.5 && inArm);
         let { hue, sat, lit, alpha, size } = spec;
+        size = Math.max(size, 0.2 + Math.pow(Math.random(), 5) * 8);
         if (bright && !spec.bright) {
           size *= 1.8;
           alpha = Math.min(alpha * 1.6, 1);
           lit = Math.min(lit + 8, 98);
         }
+
+        const haze = dist01;
+        alpha *= 1 - haze * 0.5;
+        size *= 1 - haze * 0.2;
 
         const star = {
           px, py,
@@ -598,9 +603,9 @@
           const { px, py, angle } = spiralPos(arm, radius, (Math.random() - 0.5) * spread);
           armGlow.push({
             px, py, angle,
-            w: 14 + Math.random() * 38,
+            w: (14 + Math.random() * 38) * (0.6 + Math.random() * 1.8),
             h: 45 + Math.random() * 95,
-            alpha: 0.022 + Math.random() * 0.038,
+            alpha: (0.022 + Math.random() * 0.038) * (0.4 + Math.random() * 1.8),
             hue: 32 + Math.random() * 18,
             sat: 25 + Math.random() * 20,
             lit: 45 + Math.random() * 15
@@ -649,10 +654,13 @@
         const dl = 10 + Math.random() * 8;
         const da = 0.025 + Math.random() * 0.05;
         galaxyStars.push({
-          px, py, radius, dist01,
+          px, py,
+          pz: (Math.random() - 0.5) * maxR * 0.25,
+          radius, dist01,
           size: Math.random() * 52 + 22,
           dust: true,
           layer: dist01,
+          alpha: da,
           color: `hsla(${dh},${ds}%,${dl}%,${da})`
         });
       }
@@ -736,11 +744,52 @@
         b.restore();
       });
 
-      galaxyStars.forEach(s => {
+      b.save();
+      b.globalCompositeOperation = "multiply";
+      for (let arm = 0; arm < ARM_COUNT; arm++) {
+        for (let i = 0; i < 3; i++) {
+          const radius = maxR * (0.28 + i * 0.14) + Math.random() * maxR * 0.07;
+          const { px, py, angle } = spiralPos(arm, radius, (Math.random() - 0.5) * maxR * 0.08);
+          b.save();
+          b.translate(px, py);
+          b.rotate(angle + Math.PI / 2);
+          const dark = b.createRadialGradient(0, 0, 0, 0, 0, maxR * 0.16);
+          dark.addColorStop(0, "rgba(0,0,0,0.34)");
+          dark.addColorStop(1, "transparent");
+          b.fillStyle = dark;
+          b.beginPath();
+          b.ellipse(0, 0, maxR * 0.22, maxR * 0.08, 0, 0, Math.PI * 2);
+          b.fill();
+          b.restore();
+        }
+      }
+      b.restore();
+
+      b.save();
+      b.globalCompositeOperation = "lighter";
+      b.filter = "blur(80px)";
+      b.globalAlpha = 0.05;
+      armGlow.forEach(g => {
         b.beginPath();
-        b.arc(s.px, s.py, s.dust ? s.size : Math.max(s.size, 0.35), 0, Math.PI * 2);
+        b.ellipse(g.px, g.py, g.w * 2.5, g.h * 1.8, 0, 0, Math.PI * 2);
+        b.fillStyle = `hsla(${g.hue},${g.sat}%,${g.lit}%,0.12)`;
+        b.fill();
+      });
+      b.filter = "none";
+      b.globalAlpha = 1;
+      b.restore();
+
+      galaxyStars.forEach(s => {
+        const depth = 1 + (s.pz || 0) * 0.003;
+        const x = s.px * depth;
+        const y = s.py * depth;
+        const size = s.dust ? s.size : Math.max(s.size * depth, 0.35);
+        b.globalAlpha = (s.alpha || 1) / depth;
+        b.beginPath();
+        b.arc(x, y, size, 0, Math.PI * 2);
         b.fillStyle = s.color;
         b.fill();
+        b.globalAlpha = 1;
       });
 
       const coreR = diskR * 0.18;
@@ -768,6 +817,39 @@
       b.beginPath();
       b.arc(0, 0, coreR * 3.5, 0, Math.PI * 2);
       b.fill();
+
+      b.save();
+      b.globalCompositeOperation = "lighter";
+      b.shadowBlur = 120;
+      b.shadowColor = "#fff";
+      b.fillStyle = "#fff";
+      b.beginPath();
+      b.arc(0, 0, coreR * 0.08, 0, Math.PI * 2);
+      b.fill();
+      b.shadowBlur = 0;
+      b.globalCompositeOperation = "source-over";
+
+      b.save();
+      const core3 = b.createRadialGradient(0, 0, 0, 0, 0, coreR * 1.2);
+      core3.addColorStop(0,   "rgba(255,235,180,0.6)");
+      core3.addColorStop(0.35, "rgba(255,200,130,0.15)");
+      core3.addColorStop(1,   "transparent");
+      b.fillStyle = core3;
+      b.beginPath();
+      b.arc(0, 0, coreR * 1.2, 0, Math.PI * 2);
+      b.fill();
+      b.restore();
+
+      b.save();
+      const core4 = b.createRadialGradient(0, 0, 0, 0, 0, coreR * 2.2);
+      core4.addColorStop(0,   "rgba(255,180,120,0.24)");
+      core4.addColorStop(0.65, "rgba(180,100,70,0.06)");
+      core4.addColorStop(1,   "transparent");
+      b.fillStyle = core4;
+      b.beginPath();
+      b.arc(0, 0, coreR * 2.2, 0, Math.PI * 2);
+      b.fill();
+      b.restore();
 
       b.restore();
     }
@@ -899,10 +981,13 @@
       galCtx.globalCompositeOperation = "lighter";
       const invZoom = 1 / cam.zoom;
       brightStars.forEach(s => {
-        const depth = 1 + s.pz * 0.001;
+        const depth = 1 + s.pz * 0.003;
         const x = s.px * depth;
-        const y = s.py;
+        const y = s.py * depth;
+        const alpha = Math.min(1, (s.alpha || 1) / depth);
         const sz = Math.max(s.size * invZoom * depth, 0.4);
+
+        galCtx.globalAlpha = alpha;
         galCtx.beginPath();
         galCtx.arc(x, y, sz * 2.2, 0, Math.PI * 2);
         galCtx.fillStyle = s.haloColor;
@@ -911,6 +996,7 @@
         galCtx.arc(x, y, sz, 0, Math.PI * 2);
         galCtx.fillStyle = s.color;
         galCtx.fill();
+        galCtx.globalAlpha = 1;
       });
 
       drawInteractiveStars();
