@@ -311,15 +311,15 @@
     /* ── Estrellas interactivas con mensajes ── */
     const INTERACTIVE_RAW = [
       { name: "Estrella del Amor",       px: 0,    py: 0,    msg: "Eres la luz que ilumina todo mi universo." },
-      { name: "Estrella de la Sonrisa",  px: 540,  py: -180, msg: "Tu sonrisa brilla más que mil soles juntos." },
-      { name: "Estrella del Infinito",   px: -720, py: 300,  msg: "Contigo quiero perderme en el infinito, una y otra vez." },
-      { name: "Estrella del Hogar",      px: 1080, py: 480,  msg: "Donde estés tú, ahí está mi hogar." },
-      { name: "Estrella de la Gratitud", px: -1200, py: -540, msg: "Gracias por existir y por cruzarte en mi camino." },
-      { name: "Estrella del Destino",    px: 1560, py: -720, msg: "Entre miles de millones de estrellas, el destino me trajo hasta ti." },
-      { name: "Estrella de la Calma",    px: -1680, py: 840,  msg: "Contigo todo es calma, aunque el mundo sea un caos." },
-      { name: "Estrella del Sueño",      px: 2040, py: 240,  msg: "Eres el sueño del que nunca quiero despertar." },
-      { name: "Estrella de la Magia",    px: -360, py: -1320, msg: "Lo nuestro no es casualidad: es pura magia." },
-      { name: "Estrella Eterna",         px: 720,  py: 1440, msg: "Te elegiría en cada vida, en cada galaxia, siempre." }
+      { name: "Estrella de la Sonrisa",  px: 90,   py: -30,  msg: "Tu sonrisa brilla más que mil soles juntos." },
+      { name: "Estrella del Infinito",   px: -120, py: 50,   msg: "Contigo quiero perderme en el infinito, una y otra vez." },
+      { name: "Estrella del Hogar",      px: 180,  py: 80,   msg: "Donde estés tú, ahí está mi hogar." },
+      { name: "Estrella de la Gratitud", px: -200, py: -90,  msg: "Gracias por existir y por cruzarte en mi camino." },
+      { name: "Estrella del Destino",    px: 260,  py: -120, msg: "Entre miles de millones de estrellas, el destino me trajo hasta ti." },
+      { name: "Estrella de la Calma",    px: -280, py: 140,  msg: "Contigo todo es calma, aunque el mundo sea un caos." },
+      { name: "Estrella del Sueño",      px: 340,  py: 40,   msg: "Eres el sueño del que nunca quiero despertar." },
+      { name: "Estrella de la Magia",    px: -60,  py: -220, msg: "Lo nuestro no es casualidad: es pura magia." },
+      { name: "Estrella Eterna",         px: 120,  py: 240,  msg: "Te elegiría en cada vida, en cada galaxia, siempre." }
     ];
     let INTERACTIVE = [];
 
@@ -330,18 +330,18 @@
     let armGlow = [];
     let dustLanes = [];
     let hiiRegions = [];
-    let maxR = 400;
+    let maxR = 650;
     let grainPattern = null;
     let galaxyBake = null;
     let galaxyBakeCtx = null;
     let galaxyBakeSize = 0;
 
     /* Conteos optimizados para rendimiento */
-    const GALAXY_STARS = 5200;
-    const DUST_CLOUDS = 90;
-    const ARM_GLOW_EACH = 65;
-    const DUST_LANE_EACH = 50;
-    const HII_REGIONS = 28;
+    const GALAXY_STARS = 8200;
+    const DUST_CLOUDS = 140;
+    const ARM_GLOW_EACH = 100;
+    const DUST_LANE_EACH = 80;
+    const HII_REGIONS = 42;
 
     function resize() {
       const dpr = Math.min(devicePixelRatio || 1, 1.5);
