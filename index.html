@@ -303,7 +303,7 @@
     let hoveredStar = null, selectedStar = null;
     let discovered = new Set();
 
-    const TILT = 0.11;
+    const TILT = 0.55;
     const SCALE_Y = Math.cos(TILT);
     const OFFSET_Y_RATIO = 0.02;
     const ARM_COUNT = 2;
@@ -556,10 +556,10 @@
       hiiRegions = [];
 
       for (let i = 0; i < GALAXY_STARS; i++) {
-        const dist01 = Math.pow(Math.random(), 0.68);
+        const dist01 = Math.pow(Math.random(), 0.45);
         const radius = dist01 * maxR;
         const arm = Math.floor(Math.random() * ARM_COUNT);
-        const spread = (70 + radius * 0.15) * (1.12 - dist01 * 0.22);
+        const spread = (100 + radius * 0.20) * (1.12 - dist01 * 0.22);
         const { px, py, angle } = spiralPos(arm, radius, spread);
 
         const armOffset = Math.abs((Math.random() - 0.5) * 2);
@@ -576,7 +576,9 @@
         }
 
         const star = {
-          px, py, radius, dist01, hue, sat, lit, alpha,
+          px, py,
+          pz: (Math.random() - 0.5) * maxR * 0.25,
+          radius, dist01, hue, sat, lit, alpha,
           size: size * 1.15,
           bright: bright || spec.bright,
           layer: dist01,
@@ -885,7 +887,7 @@
       const gc = getGalaxyCenter();
       galCtx.save();
       galCtx.translate(gc.x, gc.y);
-      galCtx.scale(cam.zoom * 1.8, cam.zoom * 0.55);
+      galCtx.scale(cam.zoom * 1.3, cam.zoom * 0.8);
       galCtx.rotate(cam.angle);
 
       if (galaxyBake) {
@@ -897,13 +899,16 @@
       galCtx.globalCompositeOperation = "lighter";
       const invZoom = 1 / cam.zoom;
       brightStars.forEach(s => {
-        const sz = Math.max(s.size * invZoom, 0.4);
+        const depth = 1 + s.pz * 0.001;
+        const x = s.px * depth;
+        const y = s.py;
+        const sz = Math.max(s.size * invZoom * depth, 0.4);
         galCtx.beginPath();
-        galCtx.arc(s.px, s.py, sz * 2.2, 0, Math.PI * 2);
+        galCtx.arc(x, y, sz * 2.2, 0, Math.PI * 2);
         galCtx.fillStyle = s.haloColor;
         galCtx.fill();
         galCtx.beginPath();
-        galCtx.arc(s.px, s.py, sz, 0, Math.PI * 2);
+        galCtx.arc(x, y, sz, 0, Math.PI * 2);
         galCtx.fillStyle = s.color;
         galCtx.fill();
       });
